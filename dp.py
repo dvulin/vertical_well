@@ -13,9 +13,10 @@ import fluids
 # http://www.coolprop.org/coolprop/HighLevelAPI.html
 
 """------------------- input vrijednosti ------------------------------------------------------"""
-fluid = 'H2O'           # radni fluid, H2O, CO2
+fluid = 'CO2'           # radni fluid, H2O, CO2
 # http://www.coolprop.org/fluid_properties/PurePseudoPure.html#list-of-fluids
 
+"""
 e = 0.00004             # hrapavost, m
 d = 0.219               # promjer busotine, m
 q = 9640.49             # protok, m3/dan
@@ -24,7 +25,16 @@ T = 175                 # temperatura, C (175, 30)
 p_i=180                 # tlak na dnu busotine, bar (80, 300)
 dz=50                   # korak proracunavanja po dubinama
 dubina=2500             # dubina dna busotine (2500, 3975)
+"""
 
+e = 0.00004             # hrapavost, m
+d = 0.219               # promjer busotine, m
+q = 9640.49             # protok, m3/dan
+proizvodna = True       # flag za proizvodnu ili utisnu
+T = 175                 # temperatura, C (175, 30)
+p_i=80                 # tlak na dnu busotine, bar (80, 300)
+dz=50                   # korak proracunavanja po dubinama
+dubina=2500             # dubina dna busotine (2500, 3975)
 
 eD=e/d                                                              # relativna hrapavost
 z = np.linspace(dubina, 0, int(dubina / dz + 1))                    # dubine, m
@@ -63,7 +73,6 @@ def funcdpf(f, dz, d, ro, v):
     d_p = f * (dz / d) * ro * (v ** 2) * 0.5            # gubitci radi trenja
     return (d_p)
 
-
 g = 9.8066  # akceleracija zbog gravitacije m2/s
 q = q / 86400.  # m3/s
 
@@ -73,7 +82,7 @@ Reg = []
 flow_type = []
 dens=[]
 mu=[]
-dpf=0
+dpf, ro=0,0
 print(' p --- h --- ro --- mi --- v ---- q -')
 for zi in z:
     pg.append(p)
@@ -90,7 +99,6 @@ for zi in z:
     # Clamond, Didier, 2009. “Efficient Resolution of the Colebrook Equation.”
     f = fluids.friction_factor(Re=Re, eD=eD)                # Clamondova jednadzba - bolja od Haalandove
     dpf = funcdpf(f, dz, d, ro, v)
-
     if proizvodna:
         dp = ro * g * dz - ro * v * dz + dpf                # - ro * v * dz ?
     else:
@@ -100,7 +108,9 @@ for zi in z:
     p = p - dp
     if p < 0: break
 
-THP='{0:.4g}'.format(pg[-1])
+h_THP= CP.PropsSI('H','T',(273.15+T),'P',(p*1e5),fluid)         # specificna entalpija, J/kg
+m_out=q*ro                                                      # maseni protok, kg/m3
+THP='{0:.4g}'.format(pg[-1])                                    # tlak na povrsini (izlazu), bar
 
 fig = plt.figure(figsize=(10, 5))
 ax = fig.add_subplot(111)
@@ -110,15 +120,17 @@ ax.set_xlabel('dubina, m')
 ax.set_ylabel('tlak, bar')
 ax.legend(loc='best', title=fluid)
 plt.ylim(1, p_i + 20)
-ax.annotate((str(THP)+ ' bar'), xy=(z[-1]+500, (int(pg[-1] -5 ))))
+
+ax.annotate((str(THP)+ ' bar \ '), xy=(z[-1]+500, (int(pg[-1] -5 ))))
 plt.plot(z[:len(pg)], pg, linestyle='-', marker='o')
 plt.show()
 
 print("rjesenje za tlak na uscu: p_wh = %s bar \n" % THP)
-
+print("entalpija na izlazu iz busotine: %s J/kg" % '{0:.4g}'.format(h_THP))
+print("maseni protok: %s kg/s" % '{0:.4g}'.format(m_out))
+print("teoretska potencijalna toplinska snaga: %s MW" % '{0:.4g}'.format(float(h_THP)*m_out*1E-6))
 
 """------------------------------ plotaj gustoce i viskoznosti -------------------------------"""
-
 fig = plt.figure(figsize=(10, 5))
 ax = fig.add_subplot(221)
 ax.set_title('viskoznost (T=%s C)' % (T))
@@ -134,7 +146,3 @@ ax2.set_ylabel('gustoca, kg/m^3')
 ax2.legend(loc='best', title=fluid)
 ax2.plot(pg, dens, linestyle='-', marker='o')
 plt.show()
-
-
-
-
