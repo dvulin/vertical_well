@@ -16,13 +16,13 @@ import fluids
 fluid = 'H2O'           # radni fluid, H2O, CO2
 # http://www.coolprop.org/fluid_properties/PurePseudoPure.html#list-of-fluids
 
-e = 0.0004              # hrapavost, m
-d = 0.10                # promjer busotine, m
+e = 0.00004             # hrapavost, m
+d = 0.219               # promjer busotine, m
 q = 9640.49             # protok, m3/dan
 proizvodna = True       # flag za proizvodnu ili utisnu
 T = 175                 # temperatura, C (175, 30)
-p_i=200                  # tlak na dnu busotine, bar (80, 300)
-dz=100                   # korak proracunavanja po dubinama
+p_i=180                 # tlak na dnu busotine, bar (80, 300)
+dz=50                   # korak proracunavanja po dubinama
 dubina=2500             # dubina dna busotine (2500, 3975)
 
 
@@ -73,20 +73,20 @@ Reg = []
 flow_type = []
 dens=[]
 mu=[]
-
+dpf=0
+print(' p --- h --- ro --- mi --- v ---- q -')
 for zi in z:
     pg.append(p)
     ro = CP.PropsSI('D','T',(273.15+T),'P',(p*1e5),fluid)   # gustoca pri trenutnom tlaku
     mi = CP.PropsSI('V','T',(273.15+T),'P',(p*1e5),fluid)   # viskoznost pri trenutnom tlaku
     dens.append(ro)
     mu.append(mi)
-    print(p, ro, mi)
     q_rc = q * ro_sc / ro               # volumni protok u busotini pri zadanoj gustoci i protoku na povrsini
     v = q_rc / (np.pi * 0.25 * d ** 2)                    # brzina protjecanja m/s
     Re = funcRe(ro, v, d, mi)                             # Reynoldsov broj
     Reg.append(Re)
     flow_type.append(funcReg(Re, e))
-
+    print('{0:.4g}'.format(p), zi, '{0:.4g}'.format(ro), '{0:.4g}'.format(mi), '{0:.4g}'.format(v), '{0:.4g}'.format(q), dpf)
     # Clamond, Didier, 2009. “Efficient Resolution of the Colebrook Equation.”
     f = fluids.friction_factor(Re=Re, eD=eD)                # Clamondova jednadzba - bolja od Haalandove
     dpf = funcdpf(f, dz, d, ro, v)
@@ -94,7 +94,7 @@ for zi in z:
     if proizvodna:
         dp = ro * g * dz - ro * v * dz + dpf                # - ro * v * dz ?
     else:
-        dp = ro * g * dz - ro * v * dz - dpf
+        dp = ro * g * dz + ro * v * dz - dpf
 
     dp = dp * 1e-5
     p = p - dp
