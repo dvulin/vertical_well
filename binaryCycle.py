@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import CoolProp.CoolProp as CP
 import fluids
 import scipy.optimize as sci
+import pandas as pd
 
 class binaryCycle(object):
     def __init__(self, fluid='H2O', q=9640.49, d=0.219, T=175., p=80., h=2500., prod=True):
@@ -30,6 +31,13 @@ class binaryCycle(object):
         self.Ppump=0                 # potrebna snaga pumpe, kW
         self.Pcomp=0                 # potrebna snaga kompresora, kW
         self.info='No info'          # informacije za ispis
+
+        self.ro=[]          # prazna lista gustoca koje se popne u kalkulaciji protoka u busotini
+        self.mi=[]          # prazna lista viskoznosti
+        self.Re_i=[]        # prazna lista Reynoldsovih brojeva
+        self.fr=[]          # prazna lista faktora trenja
+        self.flowType=[]    # zapis tipova protjecanja
+        self.p=[]           # tlak na dubini z
 
         if prod:
             self.dz = 50  # korak proracunavanja po dubinama
@@ -97,36 +105,45 @@ class binaryCycle(object):
         :param WHP : trazeni tlak na uscu
         :return: tlak fluida na uscu (bar) i snaga pumpe potrebna za podizanje tlaka na tu razinu (W)
         """
-        WHP=WHP*1e5
+        if WHP<1:
+            WHP=1e5
+        else:
+            WHP=WHP*1e5
         g = 9.8066              # akceleracija zbog gravitacije m2/s
         p = self.p_i*1e5        # pocetni tlak (dno busotine, Pa)
+        if not self.proizvodna:
+            p=p-WHP             # oduzeti tlak na wellheadu ukoliko postoji
+
         e, eD=self.e, self.eD
         pg, Reg, flow_type, dens, mu, dpf, ro = [], [], [], [], [], 0, 0
         pump=0
         for zi in self.z:
-            pg.append(p)
+            self.p.append(p)
             ro = CP.PropsSI('D', 'T', (273.15 + self.T), 'P', p , self.fluid)         # gustoca pri trenutnom tlaku
             mi = CP.PropsSI('V', 'T', (273.15 + self.T), 'P', p , self.fluid)         # viskoznost pri trenutnom tlaku
-            dens.append(ro)
-            mu.append(mi)
+            self.ro.append(ro)
+            self.mi.append(mi)
             q_rc = self.q * self.ro_sc / ro      # volumni protok u busotini pri zadanoj gustoci i protoku na povrsini
             v = q_rc / (np.pi * 0.25 * self.d ** 2)          # brzina protjecanja m/s
             Re = self.funcRe(ro, v, self.d, mi)              # Reynoldsov broj
-            Reg.append(Re)
-            flow_type.append(self.funcReg(Re, e))
+            self.Re_i.append(Re)
+            self.flowType.append(self.funcReg(Re, e))
             f = fluids.friction_factor(Re=Re, eD=eD)         # Clamondova jednadzba - bolja od Haalandove
                                         # Clamond, Didier, 2009. “Efficient Resolution of the Colebrook Equation.”
+            self.fr.append(f)
             dpf = self.funcdpf(f, self.dz, self.d, ro, v)
             if self.proizvodna:
                 dp = ro * g * self.dz - ro * v * self.dz + dpf
             else:
                 dp = ro * g * self.dz + ro * v * self.dz - dpf
-
             p = p - dp
             if p<101325:
                 self.info='izlaz na:' + str(zi) + ' m \n'
                 ro_avg=(ro+CP.PropsSI('D', 'T', (273.15 + self.T), 'P', WHP, self.fluid))*0.5
-                pump=zi*ro_avg*g+WHP
+                if self.proizvodna:
+                    pump=zi*ro_avg*g+WHP
+                else:
+                    pump = zi * ro_avg * g - WHP
                 self.info += 'potrebno pumpati: ' + str(pump) + ' Pa \n'
                 self.info += 'ro_avg = ' + str(ro_avg) + ' kg/m3 \n'
                 break
