@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Apr 27 01:28:47 2018
-
 @author: d
 """
+
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,7 +13,7 @@ import fluids
 # http://www.coolprop.org/coolprop/HighLevelAPI.html
 
 """------------------- input vrijednosti ------------------------------------------------------"""
-fluid = 'CO2'           # radni fluid, H2O, CO2
+fluid = 'H2O'           # radni fluid, H2O, CO2
 # http://www.coolprop.org/fluid_properties/PurePseudoPure.html#list-of-fluids
 
 """
@@ -26,15 +26,15 @@ p_i=180                 # tlak na dnu busotine, bar (80, 300)
 dz=50                   # korak proracunavanja po dubinama
 dubina=2500             # dubina dna busotine (2500, 3975)
 """
-
-e = 0.00004             # hrapavost, m
+e = 0.00004
+fluid='H2O'
 d = 0.219               # promjer busotine, m
-q = 9640.49             # protok, m3/dan
-proizvodna = True       # flag za proizvodnu ili utisnu
-T = 175                 # temperatura, C (175, 30)
-p_i=80                 # tlak na dnu busotine, bar (80, 300)
-dz=50                   # korak proracunavanja po dubinama
-dubina=2500             # dubina dna busotine (2500, 3975)
+q=9640.49               # protok, m3/dan
+proizvodna = False      # flag za proizvodnu ili utisnu
+T = 30.                 # temperatura, C (175, 30)
+p_i=300.                # tlak na dnu busotine, bar (80, 300)
+dz=50.                  # korak proracunavanja po dubinama
+dubina=3975.            # dubina dna busotine (2500, 3975)
 
 eD=e/d                                                              # relativna hrapavost
 z = np.linspace(dubina, 0, int(dubina / dz + 1))                    # dubine, m
@@ -121,14 +121,14 @@ ax.set_ylabel('tlak, bar')
 ax.legend(loc='best', title=fluid)
 plt.ylim(1, p_i + 20)
 
-ax.annotate((str(THP)+ ' bar \ '), xy=(z[-1]+500, (int(pg[-1] -5 ))))
+ax.annotate((str(THP)+ ' bar \n' + '{0:.4g}'.format(float(h_THP)*m_out*1E-6)+ ' MW'), xy=(z[-1]+500, (int(pg[-1] -5 ))))
 plt.plot(z[:len(pg)], pg, linestyle='-', marker='o')
 plt.show()
 
-print("rjesenje za tlak na uscu: p_wh = %s bar \n" % THP)
+print("rjesenje za tlak na uscu: p_wh = %s bar \n" % THP )
 print("entalpija na izlazu iz busotine: %s J/kg" % '{0:.4g}'.format(h_THP))
 print("maseni protok: %s kg/s" % '{0:.4g}'.format(m_out))
-print("teoretska potencijalna toplinska snaga: %s MW" % '{0:.4g}'.format(float(h_THP)*m_out*1E-6))
+
 
 """------------------------------ plotaj gustoce i viskoznosti -------------------------------"""
 fig = plt.figure(figsize=(10, 5))
