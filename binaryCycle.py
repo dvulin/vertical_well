@@ -176,7 +176,7 @@ class ORC(object):
                                                 # = maximum cooling fluid temperature
         self.info=''                            # info warning messages
 
-        self.dT_pinch=3          # temperature difference between pinch point and workin fluid temperature, K
+        self.dT_pinch=5          # temperature difference between pinch point and workin fluid temperature, K
         self.dp=1.5e5            # pressure difference at the pump, Pa
 
     def pump(self, dp=None, T3=None):
@@ -194,15 +194,12 @@ class ORC(object):
 
         if T3 == None: self.T3 = self.T_out
         self.T3c = self.T3                          # temperature at the inlet of condenser, K
-        self.p3c = CP.PropsSI('P', 'T', self.T3c, 'Q', 1, self.fluid)
-        self.s3c = CP.PropsSI('S', 'T', self.T3c, 'Q', 1, self.fluid)
-        self.h3c = CP.PropsSI('H', 'T', self.T3c, 'Q', 1, self.fluid)
 
         self.p3=CP.PropsSI('P', 'T', self.T3, 'Q', 0, self.fluid)
 
-        if self.p3<101325:
-            self.p3=101325          # provjera da li je tlak u sustavu ispod atmosferskog
-            self.T3=CP.PropsSI('T', 'P', self.p3, 'Q', 0, self.fluid)
+        self.p3c = CP.PropsSI('P', 'T', self.T3c, 'Q', 1, self.fluid)
+        self.s3c = CP.PropsSI('S', 'T', self.T3c, 'Q', 1, self.fluid)
+        self.h3c = CP.PropsSI('H', 'T', self.T3c, 'Q', 1, self.fluid)
 
         self.h3=CP.PropsSI('H', 'T', self.T3, 'Q', 0, self.fluid)       # J/kg
         self.s3=CP.PropsSI('S', 'T', self.T3, 'Q', 0, self.fluid)       # J/kg/K
@@ -214,8 +211,10 @@ class ORC(object):
         self.h4=CP.PropsSI('H', 'S', self.s4, 'P', self.p4, self.fluid)
         self.dens4 = CP.PropsSI('D', 'S', self.s4, 'P', self.p4, self.fluid)
         self.W_pump=(self.h4-self.h3)*self.m_wf
+        if self.W_pump<0:
+            self.W_pump=0
 
-    def evaporator(self, dTsh=5):
+    def evaporator(self, dTsh=1):
         """
         calculates preheater, boiler and superheater, takung into account pinch point analysis
         :param dTsh: temperature difference between boiler and superheater, K
@@ -253,6 +252,8 @@ class ORC(object):
         self.T2=CP.PropsSI('T', 'P', self.p2, 'S', self.s2, self.fluid)
         self.h2=CP.PropsSI('H', 'P', self.p2, 'S', self.s2, self.fluid)
         self.W_expander = (self.h1-self.h2)*self.m_wf
+        if self.W_expander<0:
+            self.W_expander=0
 
     def condenser(self, coolingFluid='H2O', Tin_cooling=None):
         """
@@ -260,12 +261,12 @@ class ORC(object):
         :return:
         """
         # precooling
-        pin_cooling=2*1e5               # inlet pressure of cooling fluid
+        pin_cooling=1.5*1e5               # inlet pressure of cooling fluid
         if Tin_cooling==None:
             Tin_cooling=12+273.15       # inlet temperature of cooling fluid
-        hin_cooling=CP.PropsSI('H', 'P', pin_cooling, 'T', Tin_cooling, self.fluid)
+        hin_cooling=CP.PropsSI('H', 'P', pin_cooling, 'T', Tin_cooling, coolingFluid)
         Tout_cooling=self.T3c
-        hout_cooling = CP.PropsSI('H', 'P', pin_cooling, 'T', Tout_cooling, self.fluid)
+        hout_cooling = CP.PropsSI('H', 'P', pin_cooling, 'T', Tout_cooling, coolingFluid)
         self.Q_cooler=(self.h2-self.h3c)*self.m_wf                # heat flux in cooler, J/s
         self.m_cf = self.Q_cooler/(hout_cooling-hin_cooling)      # mass flow rate of cooling fluid
 
@@ -279,14 +280,6 @@ class ORC(object):
         :return:
         """
         hgf0=CP.PropsSI('H', 'P', self.p_prod, 'T', self.T_inj, self.geofluid)
-        """
-        h_gf=[hgf0, hgf0+(self.h1x-self.h4), hgf0+(self.h1y-self.h4), hgf0+(self.h1-self.h4)]
-        Tgf=[]
-        for i, h in enumerate(h_gf):
-            print(i,h)
-            Tgf.append(CP.PropsSI('T', 'P', self.p_prod, 'H',h, self.geofluid))
-            h_gf[i]=h_gf[i]-hgf0
-        """
         Tgf = []
         dhgf=self.Qwf/self.m_gf                  # changes in entalpies for geofluid
         h_gf=np.array([hgf0, hgf0+dhgf[0], hgf0+dhgf[0]+dhgf[1], hgf0+dhgf[1]+dhgf[2]])
@@ -349,14 +342,14 @@ class ORC(object):
                 self.evaporator()
                 self.expander()
                 self.condenser()
-                print('evaporator: pressure reduced by 0.25 bar (to %s)' %(self.dp/1e5))
+                #print('evaporator: pressure reduced by 0.25 bar (to %s)' %(self.dp/1e5))
             elif (self.Tgf[1]-self.dT_pinch-self.T1b)>5:
                 self.dp+=0.25*1E5
                 self.pump(dp=self.dp)
                 self.evaporator()
                 self.expander()
                 self.condenser()
-                print('evaporator: pressure increased by 0.25 bar (to %s)' %(self.dp/1e5))
+                #print('evaporator: pressure increased by 0.25 bar (to %s)' %(self.dp/1e5))
             else:
                 pinched=True
 
@@ -384,6 +377,17 @@ class ORC(object):
         self.tableORC['h (J/kg)']=h
         self.tableORC['Q (W)']=Q
 
+        self.summary = pd.DataFrame(columns=['parameter', 'value', 'unit'])
+        self.summary.loc['T_inj']=['geofluid injection temperature', (self.T_inj-273.15), 'C']
+        self.summary.loc['T3c']=['cooling fluid temperature', (self.T3c - 273.15), 'C']
+        self.summary.loc['m_wf'] = ['mass flow rate (working fluid)', self.m_wf, 'kg/s']
+        self.summary.loc['m_gf'] = ['mass flow rate (geofluid)', self.m_gf, 'kg/s']
+        self.summary.loc['m_cf'] = ['mass flow rate (cooling fluid))', self.m_cf, 'kg/s']
+        self.summary.loc['eta_ORC'] = ['thermal efficiency', (self.W_expander - self.W_pump) / self.Q_heating, 'fraction']
+        self.summary.loc['P_net'] = ['net power', (self.W_expander - self.W_pump)/1E6, 'MW']
+
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.width', 300)
 
 
     def optimizeORC(self):
@@ -404,7 +408,7 @@ class ORC(object):
                 self.m_wf=1
             if self.m_wf>200:
                 self.m_wf=200
-
+            print (self.T_inj, self.T_out, self.m_wf)
             self.runORC()
             return(1/self.eta_ORC)
 
