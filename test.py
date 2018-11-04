@@ -1,4 +1,4 @@
-from  binaryCycle import binaryCycle as b
+from binaryCycle import wellBore as b
 
 fluid='H2O'
 d = 0.219               # promjer busotine, m
@@ -49,3 +49,4 @@ ax3=optWHP.plot(x='WHP', y='total', color='red', ax=ax1)
 ax1.set_ylabel("potrebna snaga, kW")
 ax1.set_xlabel("tlak na uscu busotina, bar")
 plt.show()
+
