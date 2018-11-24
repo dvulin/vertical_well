@@ -132,7 +132,6 @@ class wellBore(object):
                                         # Clamond, Didier, 2009. “Efficient Resolution of the Colebrook Equation.”
             self.fr.append(f)
             dpf = self.funcdpf(f, self.dz, self.d, ro, v)
-            print (zi, p, dpf)
             if self.proizvodna:
                 dp = ro * g * self.dz - ro * v * self.dz + dpf
             else:
