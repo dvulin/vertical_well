@@ -113,7 +113,7 @@ class wellBore(object):
         p = self.p_i*1e5        # pocetni tlak (dno busotine, Pa)
         if not self.proizvodna:
             p=p-WHP             # oduzeti tlak na wellheadu ukoliko postoji
-
+        print(p)
         e, eD=self.e, self.eD
         pg, Reg, flow_type, dens, mu, dpf, ro = [], [], [], [], [], 0, 0
         pump=0
@@ -132,21 +132,25 @@ class wellBore(object):
                                         # Clamond, Didier, 2009. “Efficient Resolution of the Colebrook Equation.”
             self.fr.append(f)
             dpf = self.funcdpf(f, self.dz, self.d, ro, v)
+            print (zi, p, dpf)
             if self.proizvodna:
                 dp = ro * g * self.dz - ro * v * self.dz + dpf
             else:
                 dp = ro * g * self.dz + ro * v * self.dz - dpf
             p = p - dp
-            if p<101325:
+            if (p<101325 and self.proizvodna):
                 self.info='izlaz na:' + str(zi) + ' m \n'
                 ro_avg=(ro+CP.PropsSI('D', 'T', (273.15 + self.T), 'P', WHP, self.fluid))*0.5
-                if self.proizvodna:
-                    pump=zi*ro_avg*g+WHP
-                else:
-                    pump = zi * ro_avg * g - WHP
-                self.info += 'potrebno pumpati: ' + str(pump) + ' Pa \n'
-                self.info += 'ro_avg = ' + str(ro_avg) + ' kg/m3 \n'
+                pump=zi*ro_avg*g+WHP
                 break
+        if (self.proizvodna==False):
+            self.info = ''
+            ro_avg = (ro + CP.PropsSI('D', 'T', (273.15 + self.T), 'P', WHP, self.fluid)) * 0.5
+            pump = p - WHP
+
+
+        self.info += 'potrebno pumpati: ' + str(pump) + ' Pa \n'
+        self.info += 'ro_avg = ' + str(ro_avg) + ' kg/m3 \n'
 
         self.Ppump=self.q*pump*0.001    # snaga pumpe, kW
         self.info += 'Potrebna snaga pumpe = ' + str(self.Ppump) + ' kW \n'
