@@ -113,7 +113,6 @@ class wellBore(object):
         p = self.p_i*1e5        # pocetni tlak (dno busotine, Pa)
         if not self.proizvodna:
             p=p-WHP             # oduzeti tlak na wellheadu ukoliko postoji
-        print(p)
         e, eD=self.e, self.eD
         pg, Reg, flow_type, dens, mu, dpf, ro = [], [], [], [], [], 0, 0
         pump=0
